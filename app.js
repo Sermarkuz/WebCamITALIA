@@ -1,5 +1,15 @@
 "use strict";
 const LS_KEY = "owi_cameras_v1";
+const DEFAULT_CAMS = [
+  {id:"seed-venezia",name:"Venezia · Canal Grande",url:"https://www.skylinewebcams.com/it/webcam/italia/veneto/venezia/canal-grande.html",category:"mare",lat:45.4375,lng:12.3358},
+  {id:"seed-roma-colosseo",name:"Roma · Colosseo",url:"https://www.skylinewebcams.com/it/webcam/italia/lazio/roma/roma-colosseo.html",category:"piazze",lat:41.8902,lng:12.4922},
+  {id:"seed-roma-circo",name:"Roma · Circo Massimo LIVE 24/7",url:"https://www.youtube.com/watch?v=o0-jcnbgJaE",category:"piazze",lat:41.8861,lng:12.4852},
+  {id:"seed-napoli",name:"Napoli · Golfo e Vesuvio",url:"https://www.skylinewebcams.com/it/webcam/italia/campania/napoli/napoli-vesuvio.html",category:"mare",lat:40.8359,lng:14.2488},
+  {id:"seed-milano",name:"Milano · Duomo",url:"https://www.skylinewebcams.com/it/webcam/italia/lombardia/milano/duomo-milano.html",category:"piazze",lat:45.4642,lng:9.1900},
+  {id:"seed-firenze",name:"Firenze · Centro Storico",url:"https://www.skylinewebcams.com/it/webcam/italia/toscana/firenze/firenze-centro-storico.html",category:"piazze",lat:43.7731,lng:11.2550},
+  {id:"seed-dolomiti",name:"Selva di Val Gardena · Dolomiti",url:"https://www.skylinewebcams.com/it/webcam/italia/trentino-alto-adige/bolzano/selva-di-val-gardena-dolomiti.html",category:"montagna",lat:46.5560,lng:11.7590}
+];
+
 const CATS = {
   piazze:{label:"Piazze / Città", color:getComputedStyle(document.documentElement).getPropertyValue('--cat-piazze').trim()},
   mare:{label:"Mare / Costa", color:getComputedStyle(document.documentElement).getPropertyValue('--cat-mare').trim()},
@@ -17,7 +27,13 @@ let map = null, markerLayer = null, markers = {};
 const cleanups = new Map(); // element -> cleanup fn
 
 function load(){
-  try{ cams = JSON.parse(localStorage.getItem(LS_KEY)) || []; }
+  const stored = localStorage.getItem(LS_KEY);
+  if(stored === null){
+    cams = DEFAULT_CAMS.map(c=>({...c}));
+    save();
+    return;
+  }
+  try{ cams = JSON.parse(stored) || []; }
   catch(e){ cams = []; }
   if(!Array.isArray(cams)) cams = [];
 }
