@@ -1,14 +1,33 @@
 "use strict";
 const LS_KEY = "owi_cameras_v1";
+const SEED_VERSION = 2;
+const SEED_VERSION_KEY = "owi_seed_version";
 const DEFAULT_CAMS = [
-  {id:"seed-venezia",name:"Venezia · Canal Grande",url:"https://www.skylinewebcams.com/it/webcam/italia/veneto/venezia/canal-grande.html",category:"mare",lat:45.4375,lng:12.3358},
-  {id:"seed-roma-colosseo",name:"Roma · Colosseo",url:"https://www.skylinewebcams.com/it/webcam/italia/lazio/roma/roma-colosseo.html",category:"piazze",lat:41.8902,lng:12.4922},
-  {id:"seed-roma-circo",name:"Roma · Circo Massimo LIVE 24/7",url:"https://www.youtube.com/watch?v=o0-jcnbgJaE",category:"piazze",lat:41.8861,lng:12.4852},
-  {id:"seed-napoli",name:"Napoli · Golfo e Vesuvio",url:"https://www.skylinewebcams.com/it/webcam/italia/campania/napoli/napoli-vesuvio.html",category:"mare",lat:40.8359,lng:14.2488},
-  {id:"seed-milano",name:"Milano · Duomo",url:"https://www.skylinewebcams.com/it/webcam/italia/lombardia/milano/duomo-milano.html",category:"piazze",lat:45.4642,lng:9.1900},
-  {id:"seed-firenze",name:"Firenze · Centro Storico",url:"https://www.skylinewebcams.com/it/webcam/italia/toscana/firenze/firenze-centro-storico.html",category:"piazze",lat:43.7731,lng:11.2550},
-  {id:"seed-dolomiti",name:"Selva di Val Gardena · Dolomiti",url:"https://www.skylinewebcams.com/it/webcam/italia/trentino-alto-adige/bolzano/selva-di-val-gardena-dolomiti.html",category:"montagna",lat:46.5560,lng:11.7590}
-];
+  {
+    id:"seed-venezia",
+    name:"Venezia · Live Cam 24/7",
+    url:"https://www.youtube.com/channel/UCMpn1qLudF-zb4M4bqxLIbw/live",
+    category:"mare",
+    lat:45.4375,
+    lng:12.3358
+  },
+  {
+    id:"seed-roma-circo",
+    name:"Roma · Circo Massimo LIVE 24/7",
+    url:"https://www.youtube.com/watch?v=o0-jcnbgJaE",
+    category:"piazze",
+    lat:41.8861,
+    lng:12.4852
+  },
+  {
+    id:"seed-dolomiti",
+    name:"Val Gardena · Dolomiti LIVE",
+    url:"https://www.youtube.com/watch?v=g4nj8mOQhPY",
+    category:"montagna",
+    lat:46.5560,
+    lng:11.7590
+  }
+]
 
 const CATS = {
   piazze:{label:"Piazze / Città", color:getComputedStyle(document.documentElement).getPropertyValue('--cat-piazze').trim()},
@@ -28,14 +47,24 @@ const cleanups = new Map(); // element -> cleanup fn
 
 function load(){
   const stored = localStorage.getItem(LS_KEY);
-  if(stored === null){
-    cams = DEFAULT_CAMS.map(c=>({...c}));
+  let parsed = [];
+  if(stored !== null){
+    try{ parsed = JSON.parse(stored) || []; }
+    catch(e){ parsed = []; }
+  }
+  if(!Array.isArray(parsed)) parsed = [];
+
+  const currentSeedVersion = Number(localStorage.getItem(SEED_VERSION_KEY) || 0);
+
+  if(stored === null || currentSeedVersion !== SEED_VERSION){
+    const userCams = parsed.filter(c => !String(c.id || "").startsWith("seed-"));
+    cams = [...DEFAULT_CAMS.map(c=>({...c})), ...userCams];
+    localStorage.setItem(SEED_VERSION_KEY, String(SEED_VERSION));
     save();
     return;
   }
-  try{ cams = JSON.parse(stored) || []; }
-  catch(e){ cams = []; }
-  if(!Array.isArray(cams)) cams = [];
+
+  cams = parsed;
 }
 function save(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(cams)); }
@@ -49,9 +78,9 @@ function detect(url){
   let m;
   if((m = url.match(/live_stream\?channel=([A-Za-z0-9_-]+)/)) ||
      (m = url.match(/youtube\.com\/channel\/([A-Za-z0-9_-]+)/)))
-    return {type:"youtube", label:"YouTube · diretta canale", embed:`https://www.youtube.com/embed/live_stream?channel=${m[1]}&autoplay=1&mute=1&playsinline=1`};
+    return {type:"youtube", label:"YouTube · diretta canale", embed:`https://www.youtube.com/embed/live_stream?channel=${m[1]}&autoplay=1&mute=1&playsinline=1&rel=0`};
   if((m = url.match(/(?:youtu\.be\/|v=|\/embed\/|\/live\/|\/shorts\/)([A-Za-z0-9_-]{11})/)))
-    return {type:"youtube", label:"YouTube", embed:`https://www.youtube.com/embed/${m[1]}?autoplay=1&mute=1&playsinline=1`};
+    return {type:"youtube", label:"YouTube", embed:`https://www.youtube.com/embed/${m[1]}?autoplay=1&mute=1&playsinline=1&rel=0`};
   if(/embed\.skylinewebcams\.com/.test(url))
     return {type:"iframe", label:"Skyline (embed)", embed:url};
   if(/skylinewebcams\.com/.test(url))
@@ -99,7 +128,7 @@ function mountPlayer(container, cam){
     const ifr = document.createElement("iframe");
     ifr.src = d.embed;
     ifr.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope";
-    ifr.allowFullscreen = true; ifr.referrerPolicy = "no-referrer-when-downgrade";
+    ifr.allowFullscreen = true; ifr.referrerPolicy = "strict-origin-when-cross-origin";
     container.appendChild(ifr);
     const hintTimer = setTimeout(()=>{
       const f = document.createElement("div"); f.className="fail";
